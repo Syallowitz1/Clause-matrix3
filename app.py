@@ -3,8 +3,8 @@ import pandas as pd
 
 st.set_page_config(page_title="Federal Subcontract Compliance & Risk Matrix", layout="wide")
 
-# --- VERIFIED CLAUSE DATABASE (EXTRACTED FROM ATTACHMENT A) ---
-#
+# --- VERIFIED CLAUSE DATABASE ---
+# Fixed the key typo for 252.225-7048 to prevent KeyError: 'Title'
 CLAUSE_DB = [
     # Table 1: Commercial Items
     {"Clause": "52.203-07", "Title": "Anti-Kickback Procedures", "Threshold": 150000, "Commercial": True, "Mandatory": True, "Risk": 2, "Risk Explanation": "Mandatory for orders over $150k per FAR standards."},
@@ -20,7 +20,7 @@ CLAUSE_DB = [
     {"Clause": "252.225-7008", "Title": "Restriction on Acquisition of Specialty Metals", "Threshold": 0, "Commercial": True, "Mandatory": True, "Risk": 3, "Risk Explanation": "Critical DoD supply chain clause for items containing specialty metals."},
     {"Clause": "252.225-7009", "Title": "Restriction on Acquisition of Certain Articles Containing Specialty Metals", "Threshold": 0, "Commercial": True, "Mandatory": True, "Risk": 3, "Risk Explanation": "Applies to end-items containing specialty metals; contains specific exceptions."},
     {"Clause": "252.246-7007", "Title": "Contractor Counterfeit Electronic Part Detection and Avoidance System", "Threshold": 0, "Commercial": True, "Mandatory": True, "Risk": 3, "Risk Explanation": "Mandatory for DoD orders involving electronic parts."},
-    {"Clause": "252.225-7048", "Export-Controlled Items": "Export-Controlled Items", "Threshold": 0, "Commercial": True, "Mandatory": True, "Risk": 3, "Risk Explanation": "Mandatory for all DoD orders involving ITAR/EAR technical data."},
+    {"Clause": "252.225-7048", "Title": "Export-Controlled Items", "Threshold": 0, "Commercial": True, "Mandatory": True, "Risk": 3, "Risk Explanation": "Mandatory for all DoD orders involving ITAR/EAR technical data."},
 
     # Table 3: Non-Commercial / Recommended
     {"Clause": "52.215-2", "Title": "Audit and Records Negotiation", "Threshold": 250000, "Commercial": False, "Mandatory": True, "Risk": 3, "Risk Explanation": "Allows audit of subcontractor records; essential for cost-reimbursable work."},
@@ -77,16 +77,19 @@ with col2:
     # FILTER LOGIC
     results = []
     for c in CLAUSE_DB:
-        if po_value < c["Threshold"]: continue
-        if is_commercial == "Yes" and not c.get("Commercial", False): continue
-        if is_cots and c["Clause"] in ["52.204-21", "52.225-1"]: continue 
-        if "252." in c["Clause"] and not contract_data["is_dod"]: continue
+        clause_title = c.get("Title", "")
+        clause_id = c.get("Clause", "")
         
-        # Trigger Logic
-        if "Specialty Metals" in c["Title"] and not has_metals: continue
-        if "Counterfeit" in c["Title"] and not has_electronics: continue
-        if "Trafficking" in c["Title"] and not (outside_us or po_value > 550000): continue
-        if "Cyber" in c["Title"] and not has_cui: continue
+        if po_value < c.get("Threshold", 0): continue
+        if is_commercial == "Yes" and not c.get("Commercial", False): continue
+        if is_cots and clause_id in ["52.204-21", "52.225-1"]: continue 
+        if "252." in clause_id and not contract_data["is_dod"]: continue
+        
+        # Trigger Logic safely using local variable strings
+        if "Specialty Metals" in clause_title and not has_metals: continue
+        if "Counterfeit" in clause_title and not has_electronics: continue
+        if "Trafficking" in clause_title and not (outside_us or po_value > 550000): continue
+        if "Cyber" in clause_title and not has_cui: continue
 
         results.append(c)
 
@@ -107,4 +110,4 @@ with col2:
     render_bucket("Level 1: Manager Approval Required", "Administrative/Low-level risk.", "Mandatory == False and Risk == 1", "🔵")
 
 st.divider()
-st.caption("**Data Source:** Clause titles and thresholds verified against acquisition.gov via Attachment A. All placeholder/sample data has been purged.")
+st.caption("**Data Source:** Clause titles and thresholds verified against acquisition.gov. All placeholder/sample data has been purged.")
